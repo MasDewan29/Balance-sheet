@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sistem Akuntansi Profesional</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* Background gradient */
+    body {
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    /* Card design */
+    .card {
+      background: rgba(255 255 255 / 0.95);
+      box-shadow: 0 4px 10px rgb(0 0 0 / 0.1);
+      border-radius: 10px;
+      padding: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    /* Dark mode overrides */
+    html.dark body {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+    }
+    html.dark .card {
+      background: rgba(30 41 59 / 0.85);
+      color: #e0e7ff;
+      box-shadow: 0 4px 10px rgb(255 255 255 / 0.1);
+    }
+    /* Hover effect for buttons */
+    button:hover {
+      filter: brightness(0.9);
+      transition: filter 0.2s;
+    }
+    /* Tooltip */
+    [data-tooltip] {
+      position: relative;
+      cursor: help;
+    }
+    [data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      white-space: nowrap;
+      background: rgba(55, 65, 81, 0.9);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      top: -1.8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.75rem;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    /* Loading spinner */
+    #loadingSpinner {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: 60px;
+      height: 60px;
+      border: 6px solid #2563eb;
+      border-top: 6px solid transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      z-index: 2000;
+      transform: translate(-50%, -50%);
+    }
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    /* Responsive table */
+    .table-responsive {
+      overflow-x: auto;
+    }
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #2563eb;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background-color: transparent;
+    }
+  </style>
+</head>
+<body class="text-gray-900 dark:text-gray-200">
+
+  <div id="loadingSpinner"></div>
+
+  <!-- Navbar -->
+  <nav class="flex items-center justify-between px-6 py-3 bg-white bg-opacity-90 dark:bg-gray-900 fixed top-0 left-0 right-0 shadow-md z-50">
+        <h1 class="font-bold text-xl select-none">Akuntansi Pro</h1>
+
+    <div class="flex items-center space-x-4">
+      <span id="userEmail" class="font-medium"></span>
+      <button id="btnLogout" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded" title="Logout">Logout</button>
+      <button id="darkModeToggle" class="text-2xl" title="Toggle Dark Mode">🌙</button>
+    </div>
+  </nav>
+
+  <!-- Login Section -->
+  <section id="loginSection" class="min-h-screen flex flex-col justify-center items-center px-4">
+    <div class="card max-w-md w-full shadow-lg">
+      <h2 class="text-2xl font-semibold mb-6 text-center">Login </h2>
+      <form id="loginForm" class="space-y-4">
+        <input id="emailInput" type="email" placeholder="Masukkan email" required class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <input id="codeInput" type="password" placeholder="Kode akses (1234)" required class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded">Masuk</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Dashboard Section -->
+  <section id="dashboardSection" class="hidden pt-20 px-6 max-w-7xl mx-auto">
+
+    <!-- Form input Jurnal Umum -->
+    <div class="card">
+      <h2 class="text-xl font-semibold mb-4">Input Jurnal Umum</h2>
+      <form id="formJurnal" class="grid grid-cols-1 md:grid-cols-10 gap-4 items-end">
+        <div class="md:col-span-2">
+          <label for="inputTanggal" class="block mb-1 font-medium">Tanggal</label>
+          <input type="date" id="inputTanggal" required
+            class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div class="md:col-span-2">
+          <label for="selectAkun" class="block mb-1 font-medium">Pilih Akun</label>
+          <select id="selectAkun" required
+            class="w-full px-3 py-2 border rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="" disabled selected>Pilih Akun</option>
+          </select>
+        </div>
+        <div class="md:col-span-2">
+          <label for="inputKeterangan" class="block mb-1 font-medium">Keterangan</label>
+          <input type="text" id="inputKeterangan" required
+            placeholder="Deskripsi transaksi"
+            class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div class="md:col-span-1">
+          <label for="inputRef" class="block mb-1 font-medium">Ref</label>
+          <input type="text" id="inputRef"
+            placeholder="Optional"
+            class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div class="md:col-span-1">
+          <label for="inputDebit" class="block mb-1 font-medium">Debit</label>
+          <input type="number" id="inputDebit" min="0" step="1000" value="0"
+            class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div class="md:col-span-1">
+          <label for="inputKredit" class="block mb-1 font-medium">Kredit</label>
+          <input type="number" id="inputKredit" min="0" step="1000" value="0"
+            class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div class="md:col-span-1">
+          <button type="submit"
+            class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded" data-tooltip="Simpan Jurnal">
+            Simpan
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Search & Filter Jurnal -->
+    <div class="card flex flex-col md:flex-row md:items-center md:space-x-6 mb-6">
+      <div class="flex items-center space-x-4 mb-3 md:mb-0">
+        <label for="searchJurnal" class="font-medium">Cari Jurnal:</label>
+        <input type="search" id="searchJurnal" placeholder="Cari tanggal, akun, keterangan..." class="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-64" />
+      </div>
+      <div class="flex items-center space-x-4">
+        <label for="filterTglMulai" class="font-medium">Tanggal Mulai:</label>
+        <input type="date" id="filterTglMulai" class="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <label for="filterTglSampai" class="font-medium">Tanggal Sampai:</label>
+        <input type="date" id="filterTglSampai" class="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <label for="filterTipeAkun" class="font-medium">Tipe Akun:</label>
+        <select id="filterTipeAkun" class="px-3 py-2 border rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Semua</option>
+          <option value="Aset">Aset</option>
+          <option value="Kewajiban">Kewajiban</option>
+          <option value="Modal">Modal</option>
+          <option value="Pendapatan">Pendapatan</option>
+          <option value="Beban">Beban</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Tabel Jurnal Umum -->
+    <div class="card overflow-x-auto">
+      <h2 class="text-xl font-semibold mb-4">Jurnal Umum</h2>
+      <table class="min-w-full table-auto border-collapse border border-gray-300 dark:border-gray-600">
+        <thead class="bg-blue-600 text-white">
+          <tr>
+            <th class="p-2 border border-gray-300 dark:border-gray-600" data-tooltip="Tanggal transaksi">Tanggal</th>
+            <th class="p-2 border border-gray-300 dark:border-gray-600" data-tooltip="Nama akun">Akun</th>
+            <th class="p-2 border border-gray-300 dark:border-gray-600" data-tooltip="Keterangan transaksi">Keterangan</th>
+            <th class="p-2 border border-gray-300 dark:border-gray-600" data-tooltip="Referensi">Ref</th>
+            <th class="p-2 border border-gray-300 dark:border-gray-600" data-tooltip="Jumlah debit">Debit (IDR)</th>
+            <th class="p-2 border border-gray-300 dark:border-gray-600" data-tooltip="Jumlah kredit">Kredit (IDR)</th>
+            <th class="p-2 border border-gray-300 dark:border-gray-600" data-tooltip="Aksi">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="jurnalBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Buku Besar -->
+    <div class="card">
+      <h2 class="text-xl font-semibold mb-4">Buku Besar</h2>
+      <div class="mb-4 flex items-center space-x-4">
+        <label for="filterAkunBB" class="font-medium">Pilih Akun:</label>
+        <select id="filterAkunBB" class="px-3 py-2 border rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">-- Semua Akun --</option>
+        </select>
+      </div>
+      <div class="table-responsive">
+        <table class="min-w-full table-auto border-collapse border border-gray-300 dark:border-gray-600">
+          <thead class="bg-green-600 text-white">
+            <tr>
+              <th class="p-2 border border-gray-300 dark:border-gray-600">Akun</th>
+              <th class="p-2 border border-gray-300 dark:border-gray-600">Tanggal</th>
+              <th class="p-2 border border-gray-300 dark:border-gray-600">Keterangan</th>
+              <th class="p-2 border border-gray-300 dark:border-gray-600">Ref</th>
+              <th class="p-2 border border-gray-300 dark:border-gray-600">Debit (IDR)</th>
+              <th class="p-2 border border-gray-300 dark:border-gray-600">Kredit (IDR)</th>
+              <th class="p-2 border border-gray-300 dark:border-gray-600">Saldo Debit (IDR)</th>
+              <th class="p-2 border border-gray-300 dark:border-gray-600">Saldo Kredit (IDR)</th>
+            </tr>
+          </thead>
+          <tbody id="bukuBesarBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Neraca Saldo -->
+    <div class="card overflow-x-auto">
+      <h2 class="text-xl font-semibold mb-4">Neraca Saldo</h2>
+      <table class="min-w-full table-auto border-collapse border border-gray-300 dark:border-gray-600">
+        <thead class="bg-purple-600 text-white">
+          <tr>
+            <th class="p-2 border border-gray-300 dark:border-gray-600">Nama Akun</th>
+            <th class="p-2 border border-gray-300 dark:border-gray-600">Total Debit (IDR)</th>
+            <th class="p-2 border border-gray-300 dark:border-gray-600">Total Kredit (IDR)</th>
+          </tr>
+        </thead>
+        <tbody id="neracaSaldoBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Laporan Keuangan -->
+    <div class="card">
+      <h2 class="text-xl font-semibold mb-4">Laporan Keuangan</h2>
+      <div class="flex flex-wrap items-center space-x-4 mb-4">
+        <label for="laporanPeriode" class="font-medium">Periode:</label>
+        <select id="laporanPeriode" class="px-3 py-2 border rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="tahun">Tahun</option>
+          <option value="bulan">Bulan</option>
+        </select>
+        <label for="laporanTahun" class="font-medium">Tahun:</label>
+        <select id="laporanTahun" class="px-3 py-2 border rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+        <label id="labelBulan" for="laporanBulan" class="font-medium hidden">Bulan:</label>
+        <select id="laporanBulan" class="px-3 py-2 border rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 hidden">
+          <option value="01">Januari</option>
+          <option value="02">Februari</option>
+          <option value="03">Maret</option>
+          <option value="04">April</option>
+          <option value="05">Mei</option>
+          <option value="06">Juni</option>
+          <option value="07">Juli</option>
+          <option value="08">Agustus</option>
+          <option value="09">September</option>
+          <option value="10">Oktober</option>
+          <option value="11">November</option>
+          <option value="12">Desember</option>
+        </select>
+        <button id="btnGenerateLaporan" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold">Generate</button>
+        <button id="btnExportPDF" title="Export Laporan ke PDF" class="ml-3 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded font-semibold">Export PDF</button>
+      </div>
+      <div id="laporanResult" class="overflow-x-auto"></div>
+    </div>
+
+    <!-- Grafik Dashboard -->
+    <div class="card">
+      <h2 class="text-xl font-semibold mb-4">Grafik Saldo Bersih Bulanan</h2>
+      <canvas id="dashboardChart" height="100"></canvas>
+    </div>
+
+    <!-- Manajemen Akun -->
+    <div class="card max-w-md mx-auto">
+      <h2 class="text-xl font-semibold mb-4">Manajemen Akun</h2>
+      <form id="formTambahAkun" class="flex space-x-4 mb-4">
+        <input type="text" id="inputNamaAkun" placeholder="Nama akun baru" required
+          class="flex-grow px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <select id="selectTipeAkun" required
+          class="px-3 py-2 border rounded bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="" disabled selected>Tipe Akun</option>
+          <option value="Aset">Aset</option>
+          <option value="Kewajiban">Kewajiban</option>
+          <option value="Modal">Modal</option>
+          <option value="Pendapatan">Pendapatan</option>
+          <option value="Beban">Beban</option>
+        </select>
+        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold">Tambah</button>
+      </form>
+      <ul id="daftarAkun" class="divide-y divide-gray-300 dark:divide-gray-600 max-h-52 overflow-y-auto"></ul>
+    </div>
+
+  </section>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // Elemen DOM utama
+      const loginSection = document.getElementById("loginSection");
+      const dashboardSection = document.getElementById("dashboardSection");
+      const loginForm = document.getElementById("loginForm");
+      const emailInput = document.getElementById("emailInput");
+      const codeInput = document.getElementById("codeInput");
+      const userEmailSpan = document.getElementById("userEmail");
+      const btnLogout = document.getElementById("btnLogout");
+      const darkModeToggle = document.getElementById("darkModeToggle");
+      const loadingSpinner = document.getElementById("loadingSpinner");
+
+      // Data dan storage keys
+      const LS_KEY_USER = "akuntansiProUser";
+      const LS_KEY_AKUN = "akuntansiProAkunList";
+      const LS_KEY_JURNAL = "akuntansiProJurnalList";
+      const LS_KEY_THEME = "akuntansiProTheme";
+
+      // Elemen formulir dan tabel
+      const formJurnal = document.getElementById("formJurnal");
+      const inputTanggal = document.getElementById("inputTanggal");
+      const selectAkun = document.getElementById("selectAkun");
+      const inputKeterangan = document.getElementById("inputKeterangan");
+      const inputRef = document.getElementById("inputRef");
+      const inputDebit = document.getElementById("inputDebit");
+      const inputKredit = document.getElementById("inputKredit");
+
+      const searchJurnal = document.getElementById("searchJurnal");
+      const filterTglMulai = document.getElementById("filterTglMulai");
+      const filterTglSampai = document.getElementById("filterTglSampai");
+      const filterTipeAkun = document.getElementById("filterTipeAkun");
+
+      const jurnalBody = document.getElementById("jurnalBody");
+
+      const filterAkunBB = document.getElementById("filterAkunBB");
+      const bukuBesarBody = document.getElementById("bukuBesarBody");
+
+      const neracaSaldoBody = document.getElementById("neracaSaldoBody");
+
+      const laporanPeriode = document.getElementById("laporanPeriode");
+      const laporanTahun = document.getElementById("laporanTahun");
+      const laporanBulan = document.getElementById("laporanBulan");
+      const labelBulan = document.getElementById("labelBulan");
+      const btnGenerateLaporan = document.getElementById("btnGenerateLaporan");
+      const laporanResult = document.getElementById("laporanResult");
+      const btnExportPDF = document.getElementById("btnExportPDF");
+
+      const formTambahAkun = document.getElementById("formTambahAkun");
+      const inputNamaAkun = document.getElementById("inputNamaAkun");
+      const selectTipeAkun = document.getElementById("selectTipeAkun");
+      const daftarAkun = document.getElementById("daftarAkun");
+
+      // Data state
+      let akunList = [];
+      let jurnalList = [];
+
+      // Util
+      function showLoading(show = true) {
+        loadingSpinner.style.display = show ? "block" : "none";
+      }
+
+      function saveData() {
+        localStorage.setItem(LS_KEY_JURNAL, JSON.stringify(jurnalList));
+      }
+      function loadData() {
+        let data = localStorage.getItem(LS_KEY_JURNAL);
+        jurnalList = data ? JSON.parse(data) : [];
+      }
+
+      function saveAccounts() {
+        localStorage.setItem(LS_KEY_AKUN, JSON.stringify(akunList));
+      }
+      function loadAccounts() {
+        let data = localStorage.getItem(LS_KEY_AKUN);
+        akunList = data ? JSON.parse(data) : [];
+        if(akunList.length === 0) {
+          // Tambahkan akun default dasar
+          akunList = [
+            {id: 1, nama: "Kas", tipe: "Aset"},
+            {id: 2, nama: "Piutang Usaha", tipe: "Aset"},
+            {id: 3, nama: "Perlengkapan", tipe: "Aset"},
+            {id: 4, nama: "Hutang Usaha", tipe: "Kewajiban"},
+            {id: 5, nama: "Modal", tipe: "Modal"},
+            {id: 6, nama: "Pendapatan Jasa", tipe: "Pendapatan"},
+            {id: 7, nama: "Beban Gaji", tipe: "Beban"},
+          ];
+          saveAccounts();
+        }
+      }
+
+      // Render akun di dropdown
+      function renderAkunDropdowns() {
+        selectAkun.innerHTML = '<option value="" disabled selected>Pilih Akun</option>';
+        filterTipeAkun.value = "";
+        filterAkunBB.innerHTML = '<option value="">-- Semua Akun --</option>';
+        daftarAkun.innerHTML = "";
+
+        akunList.forEach((akun) => {
+          selectAkun.innerHTML += `<option value="${akun.id}">${akun.nama} (${akun.tipe})</option>`;
+          filterAkunBB.innerHTML += `<option value="${akun.id}">${akun.nama} (${akun.tipe})</option>`;
+          daftarAkun.innerHTML += `
+            <li class="py-2 flex justify-between items-center">
+              <span>${akun.nama} <small class="text-gray-500 dark:text-gray-400">(${akun.tipe})</small></span>
+              <button class="text-red-500 hover:text-red-700" title="Hapus Akun" data-id="${akun.id}">✕</button>
+            </li>
+          `;
+        });
+      }
+
+      // Render daftar akun di manajemen akun
+      daftarAkun.addEventListener("click", e => {
+        if(e.target.tagName === "BUTTON"){
+          const id = parseInt(e.target.dataset.id);
+          if(confirm("Yakin hapus akun ini? Semua jurnal dengan akun ini akan ikut terhapus.")){
+            akunList = akunList.filter(a => a.id !== id);
+            jurnalList = jurnalList.filter(j => j.akunId !== id);
+            saveAccounts();
+            saveData();
+            renderAkunDropdowns();
+            renderJurnalUmum();
+            renderBukuBesar();
+            renderNeracaSaldo();
+          }
+        }
+      });
+
+      // Tambah akun baru
+      formTambahAkun.addEventListener("submit", e => {
+        e.preventDefault();
+        const nama = inputNamaAkun.value.trim();
+        const tipe = selectTipeAkun.value;
+        if(!nama || !tipe) return alert("Nama dan tipe akun wajib diisi");
+        // Cek duplikat
+        if(akunList.some(a => a.nama.toLowerCase() === nama.toLowerCase())){
+          return alert("Nama akun sudah ada");
+        }
+        const newAkun = {id: Date.now(), nama, tipe};
+        akunList.push(newAkun);
+        saveAccounts();
+        renderAkunDropdowns();
+        inputNamaAkun.value = "";
+        selectTipeAkun.value = "";
+      });
+
+      // Render Jurnal Umum dengan filter dan search
+      function renderJurnalUmum() {
+        let filtered = jurnalList.slice();
+
+        // Filter tanggal
+        if(filterTglMulai.value) {
+          filtered = filtered.filter(j => j.tanggal >= filterTglMulai.value);
+        }
+        if(filterTglSampai.value) {
+          filtered = filtered.filter(j => j.tanggal <= filterTglSampai.value);
+        }
+
+        // Filter tipe akun
+        if(filterTipeAkun.value) {
+          filtered = filtered.filter(j => {
+            const akun = akunList.find(a => a.id === j.akunId);
+            return akun && akun.tipe === filterTipeAkun.value;
+          });
+        }
+
+        // Search
+        const search = searchJurnal.value.toLowerCase().trim();
+        if(search){
+          filtered = filtered.filter(j => {
+            const akun = akunList.find(a => a.id === j.akunId);
+            return (
+              j.tanggal.includes(search) ||
+              (akun && akun.nama.toLowerCase().includes(search)) ||
+              j.keterangan.toLowerCase().includes(search) ||
+              (j.ref && j.ref.toLowerCase().includes(search))
+            );
+          });
+        }
+
+        // Render rows
+        jurnalBody.innerHTML = "";
+        filtered.forEach((j, idx) => {
+          const akun = akunList.find(a => a.id === j.akunId);
+          const isBalance = j.debit === j.kredit;
+          const rowClass = isBalance ? "" : "bg-red-100 dark:bg-red-900";
+
+          jurnalBody.innerHTML += `
+            <tr class="${rowClass}">
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-center">${j.tanggal}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600">${akun ? akun.nama : "Akun tidak ditemukan"}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600">${j.keterangan}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-center">${j.ref || ""}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(j.debit)}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(j.kredit)}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-center">
+                <button data-idx="${idx}" class="btnHapusJurnal text-red-600 hover:text-red-900" title="Hapus Jurnal">✕</button>
+              </td>
+            </tr>
+          `;
+        });
+
+        // Update akun dropdown di Buku Besar
+        updateFilterAkunBB();
+      }
+
+      // Format rupiah
+      function formatRupiah(num){
+        return new Intl.NumberFormat("id-ID", {style:"currency", currency:"IDR"}).format(num);
+      }
+
+      // Hapus jurnal
+      jurnalBody.addEventListener("click", e => {
+        if(e.target.classList.contains("btnHapusJurnal")){
+          const idx = parseInt(e.target.dataset.idx);
+          if(confirm("Yakin hapus jurnal ini?")){
+            jurnalList.splice(idx, 1);
+            saveData();
+            renderJurnalUmum();
+            renderBukuBesar();
+            renderNeracaSaldo();
+            renderDashboardChart();
+          }
+        }
+      });
+
+      // Submit jurnal baru
+      formJurnal.addEventListener("submit", e => {
+        e.preventDefault();
+        const tanggal = inputTanggal.value;
+        const akunId = parseInt(selectAkun.value);
+        const keterangan = inputKeterangan.value.trim();
+        const ref = inputRef.value.trim();
+        const debit = Number(inputDebit.value);
+        const kredit = Number(inputKredit.value);
+
+        if(!tanggal || !akunId || !keterangan) return alert("Tanggal, akun, dan keterangan harus diisi");
+        if(debit < 0 || kredit < 0) return alert("Debit dan kredit tidak boleh negatif");
+        if(debit === 0 && kredit === 0) return alert("Debit atau kredit harus diisi");
+        if(debit > 0 && kredit > 0) return alert("Debit dan kredit tidak boleh diisi bersamaan");
+
+        jurnalList.push({tanggal, akunId, keterangan, ref, debit, kredit});
+        saveData();
+        renderJurnalUmum();
+        renderBukuBesar();
+        renderNeracaSaldo();
+        renderDashboardChart();
+        formJurnal.reset();
+        inputDebit.value = 0;
+        inputKredit.value = 0;
+      });
+
+      // Buku Besar filter akun update
+      function updateFilterAkunBB(){
+        const selected = filterAkunBB.value;
+        filterAkunBB.innerHTML = '<option value="">-- Semua Akun --</option>';
+        akunList.forEach(a => {
+          filterAkunBB.innerHTML += `<option value="${a.id}" ${a.id==selected ? 'selected':''}>${a.nama} (${a.tipe})</option>`;
+        });
+      }
+
+      // Render Buku Besar
+      function renderBukuBesar(){
+        const selectedAkunId = filterAkunBB.value ? parseInt(filterAkunBB.value) : null;
+        let filtered = jurnalList.slice();
+        if(selectedAkunId) filtered = filtered.filter(j => j.akunId === selectedAkunId);
+
+        // Group by akun dan sort by tanggal ascending
+        filtered.sort((a,b) => a.tanggal.localeCompare(b.tanggal));
+
+        let saldoDebit = 0;
+        let saldoKredit = 0;
+
+        bukuBesarBody.innerHTML = "";
+        filtered.forEach(j => {
+          saldoDebit += j.debit;
+          saldoKredit += j.kredit;
+          const akun = akunList.find(a => a.id === j.akunId);
+          bukuBesarBody.innerHTML += `
+            <tr>
+              <td class="p-2 border border-gray-300 dark:border-gray-600">${akun ? akun.nama : "Akun tidak ditemukan"}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-center">${j.tanggal}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600">${j.keterangan}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-center">${j.ref || ""}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(j.debit)}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(j.kredit)}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(saldoDebit)}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(saldoKredit)}</td>
+            </tr>
+          `;
+        });
+      }
+
+      filterAkunBB.addEventListener("change", () => {
+        renderBukuBesar();
+      });
+
+      // Render Neraca Saldo
+      function renderNeracaSaldo(){
+        // Hitung total debit dan kredit per akun
+        let neraca = {};
+        akunList.forEach(a => neraca[a.id] = {nama: a.nama, debit:0, kredit:0});
+        jurnalList.forEach(j => {
+          if(neraca[j.akunId]){
+            neraca[j.akunId].debit += j.debit;
+            neraca[j.akunId].kredit += j.kredit;
+          }
+        });
+
+        neracaSaldoBody.innerHTML = "";
+        Object.values(neraca).forEach(n => {
+          neracaSaldoBody.innerHTML += `
+            <tr>
+              <td class="p-2 border border-gray-300 dark:border-gray-600">${n.nama}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(n.debit)}</td>
+              <td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(n.kredit)}</td>
+            </tr>
+          `;
+        });
+      }
+
+      // Populate tahun di laporan keuangan
+      function populateTahun(){
+        let tahunSet = new Set(jurnalList.map(j => j.tanggal.substring(0,4)));
+        let years = Array.from(tahunSet).sort((a,b) => b-a);
+        laporanTahun.innerHTML = "";
+        years.forEach(y => {
+          laporanTahun.innerHTML += `<option value="${y}">${y}</option>`;
+        });
+      }
+
+      // Tampilkan/hide bulan jika periode "bulan"
+      laporanPeriode.addEventListener("change", () => {
+        if(laporanPeriode.value === "bulan"){
+          laporanBulan.classList.remove("hidden");
+          labelBulan.classList.remove("hidden");
+        } else {
+          laporanBulan.classList.add("hidden");
+          labelBulan.classList.add("hidden");
+        }
+      });
+
+      // Generate laporan sederhana (Laba Rugi & Neraca)
+      btnGenerateLaporan.addEventListener("click", () => {
+        generateLaporan();
+      });
+
+      // Export laporan PDF
+      btnExportPDF.addEventListener("click", () => {
+        exportLaporanPDF();
+      });
+
+      // Generate laporan function
+      function generateLaporan(){
+        if(jurnalList.length === 0) {
+          laporanResult.innerHTML = "<p class='text-red-600'>Data jurnal kosong.</p>";
+          return;
+        }
+
+        const periode = laporanPeriode.value;
+        const tahun = laporanTahun.value;
+        const bulan = laporanBulan.value;
+
+        // Filter data sesuai periode
+        let filtered = jurnalList.filter(j => j.tanggal.startsWith(tahun));
+        if(periode === "bulan"){
+          filtered = filtered.filter(j => j.tanggal.substring(5,7) === bulan);
+        }
+
+        // Hitung saldo akhir per akun
+        let saldoAkun = {};
+        akunList.forEach(a => saldoAkun[a.id] = 0);
+
+        filtered.forEach(j => {
+          if(j.debit > 0) saldoAkun[j.akunId] += j.debit;
+          if(j.kredit > 0) saldoAkun[j.akunId] -= j.kredit;
+        });
+
+        // Bagi akun ke Laba Rugi dan Neraca
+        let labaRugi = {pendapatan:0, beban:0};
+        let neraca = {aset:0, kewajiban:0, modal:0};
+
+        akunList.forEach(a => {
+          const saldo = saldoAkun[a.id];
+          if(a.tipe === "Pendapatan") labaRugi.pendapatan += -saldo; // pendapatan kredit positif
+          else if(a.tipe === "Beban") labaRugi.beban += saldo;
+          else if(a.tipe === "Aset") neraca.aset += saldo;
+          else if(a.tipe === "Kewajiban") neraca.kewajiban += -saldo;
+          else if(a.tipe === "Modal") neraca.modal += -saldo;
+        });
+
+        const labaBersih = labaRugi.pendapatan - labaRugi.beban;
+
+        laporanResult.innerHTML = `
+          <h3 class="font-semibold text-lg mb-2">Laporan Keuangan (${periode === "tahun" ? "Tahun" : "Bulan"} ${periode === "tahun" ? tahun : bulan + "/" + tahun})</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 class="font-semibold mb-1">Laba Rugi</h4>
+              <table class="min-w-full table-auto border-collapse border border-gray-300 dark:border-gray-600 mb-4">
+                <thead class="bg-blue-600 text-white">
+                  <tr><th class="p-2 border border-gray-300 dark:border-gray-600">Jenis</th><th class="p-2 border border-gray-300 dark:border-gray-600">Jumlah (IDR)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td class="p-2 border border-gray-300 dark:border-gray-600">Pendapatan</td><td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(labaRugi.pendapatan)}</td></tr>
+                  <tr><td class="p-2 border border-gray-300 dark:border-gray-600">Beban</td><td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(labaRugi.beban)}</td></tr>
+                  <tr class="font-semibold"><td class="p-2 border border-gray-300 dark:border-gray-600">Laba Bersih</td><td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(labaBersih)}</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div>
+              <h4 class="font-semibold mb-1">Neraca</h4>
+              <table class="min-w-full table-auto border-collapse border border-gray-300 dark:border-gray-600">
+                <thead class="bg-purple-600 text-white">
+                  <tr><th class="p-2 border border-gray-300 dark:border-gray-600">Jenis</th><th class="p-2 border border-gray-300 dark:border-gray-600">Jumlah (IDR)</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td class="p-2 border border-gray-300 dark:border-gray-600">Aset</td><td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(neraca.aset)}</td></tr>
+                  <tr><td class="p-2 border border-gray-300 dark:border-gray-600">Kewajiban</td><td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(neraca.kewajiban)}</td></tr>
+                  <tr><td class="p-2 border border-gray-300 dark:border-gray-600">Modal</td><td class="p-2 border border-gray-300 dark:border-gray-600 text-right">${formatRupiah(neraca.modal)}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      // Export PDF Laporan Keuangan
+      async function exportLaporanPDF(){
+        if(!laporanResult.innerHTML.trim()){
+          alert("Silakan generate laporan dulu.");
+          return;
+        }
+        showLoading(true);
+        await new Promise(r => setTimeout(r, 500)); // delay simulasi loading
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        doc.setFontSize(16);
+        doc.text("Laporan Keuangan", 10, 20);
+        doc.setFontSize(12);
+
+        // Ambil teks dari laporanResult dan cetak sederhana
+        const text = laporanResult.innerText || laporanResult.textContent;
+        let y = 30;
+        text.split("\n").forEach(line => {
+          if(y > 280){
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(line, 10, y);
+          y += 8;
+        });
+
+        doc.save("laporan_keuangan.pdf");
+        showLoading(false);
+      }
+
+      // Chart dashboard saldo bersih bulanan
+      let chartInstance = null;
+      function renderDashboardChart(){
+        // Hitung saldo bersih per bulan tahun ini
+        const now = new Date();
+        const thisYear = now.getFullYear().toString();
+
+        let saldoBulan = new Array(12).fill(0);
+
+        jurnalList.forEach(j => {
+          if(j.tanggal.startsWith(thisYear)){
+            const month = parseInt(j.tanggal.substring(5,7))-1;
+            saldoBulan[month] += j.debit - j.kredit;
+          }
+        });
+
+        const ctx = document.getElementById("dashboardChart").getContext("2d");
+        if(chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: [
+              "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+              "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+            ],
+            datasets: [{
+              label: "Saldo Bersih (IDR)",
+              data: saldoBulan,
+              backgroundColor: "rgba(37, 99, 235, 0.7)"
+            }]
+          },
+          options: {
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  callback: val => new Intl.NumberFormat("id-ID", {style:"currency", currency:"IDR"}).format(val)
+                }
+              }
+            },
+            plugins: {
+              legend: {display: false},
+              tooltip: {
+                callbacks: {
+                  label: ctx => new Intl.NumberFormat("id-ID", {style:"currency", currency:"IDR"}).format(ctx.parsed.y)
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Login check
+      function isLoggedIn() {
+        return localStorage.getItem(LS_KEY_USER) !== null;
+      }
+
+      // Login process
+      loginForm.addEventListener("submit", e => {
+        e.preventDefault();
+        const email = emailInput.value.trim().toLowerCase();
+        const code = codeInput.value.trim();
+
+        if(!email) return alert("Email harus diisi");
+        if(code !== "1234") return alert("Kode akses salah");
+
+        localStorage.setItem(LS_KEY_USER, email);
+        initAfterLogin();
+      });
+
+      btnLogout.addEventListener("click", () => {
+        if(confirm("Yakin ingin logout?")){
+          localStorage.removeItem(LS_KEY_USER);
+          location.reload();
+        }
+      });
+
+      // Dark mode toggle
+      darkModeToggle.addEventListener("click", () => {
+        document.documentElement.classList.toggle("dark");
+        if(document.documentElement.classList.contains("dark")){
+          localStorage.setItem(LS_KEY_THEME, "dark");
+          darkModeToggle.textContent = "☀️";
+        } else {
+          localStorage.removeItem(LS_KEY_THEME);
+          darkModeToggle.textContent = "🌙";
+        }
+      });
+
+      // Restore dark mode from storage
+      function restoreTheme(){
+        const theme = localStorage.getItem(LS_KEY_THEME);
+        if(theme === "dark"){
+          document.documentElement.classList.add("dark");
+          darkModeToggle.textContent = "☀️";
+        } else {
+          darkModeToggle.textContent = "🌙";
+        }
+      }
+
+      // Inisialisasi setelah login
+      function initAfterLogin(){
+        loginSection.classList.add("hidden");
+        dashboardSection.classList.remove("hidden");
+        const email = localStorage.getItem(LS_KEY_USER);
+        userEmailSpan.textContent = email;
+
+        loadAccounts();
+        loadData();
+        renderAkunDropdowns();
+        renderJurnalUmum();
+        renderBukuBesar();
+        renderNeracaSaldo();
+        populateTahun();
+        renderDashboardChart();
+      }
+
+      // Inisialisasi awal
+      function init(){
+        restoreTheme();
+        if(isLoggedIn()){
+          initAfterLogin();
+        } else {
+          loginSection.classList.remove("hidden");
+          dashboardSection.classList.add("hidden");
+        }
+      }
+
+      init();
+
+    })();
+  </script>
+</body>
+</html>
